@@ -1,4 +1,4 @@
-name: Erweiterter Hello World Workflow
+name: Multi-Job Workflow
 
 on:
   push:
@@ -7,41 +7,54 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Definiere Umgebungsvariablen, die im gesamten Workflow verfügbar sind
 env:
   GREETING: "Willkommen bei deinem ersten GitHub Actions Workflow!"
 
 jobs:
-  hello:
+  ersteller:
+    name: Datei-Ersteller
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Sage Hallo mit Umgebungsvariable
-        run: echo "${{ env.GREETING }}"
-      
-      - name: Zeige GitHub-Kontext
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "Repository: ${{ github.repository }}"
-          echo "Runner OS: ${{ runner.os }}"
-      
-      - name: Zeige Verzeichnisinhalt
-        run: ls -la
-      
       - name: Erstelle eine Datei
         run: |
           echo "Diese Datei wurde durch GitHub Actions erstellt." > generated-file.txt
           echo "Zeitstempel: $(date)" >> generated-file.txt
-      
-      - name: Zeige Dateiinhalt
-        run: cat generated-file.txt
+          echo "GREETING: ${{ env.GREETING }}" >> generated-file.txt
       
       - name: Speichere die Datei als Artefakt
         uses: actions/upload-artifact@v4
         with:
           name: generated-file
           path: generated-file.txt
-
+  
+  verarbeiter:
+    name: Datei-Verarbeiter
+    needs: ersteller  # Dieser Job wartet, bis der "ersteller"-Job abgeschlossen ist
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Lade Artefakt herunter
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-file
+      
+      - name: Zeige Dateiinhalt
+        run: cat generated-file.txt
+      
+      - name: Verarbeite Datei
+        run: |
+          echo "Die Datei wurde verarbeitet." >> generated-file.txt
+          echo "Verarbeitungszeitstempel: $(date)" >> generated-file.txt
+      
+      - name: Zeige bearbeitete Datei
+        run: cat generated-file.txt
+      
+      - name: Speichere die verarbeitete Datei als neues Artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-file
+          path: generated-file.txt
